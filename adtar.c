@@ -1,8 +1,27 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <dirent.h>
+
+void storeFiles(FILE *file, char *baseDirectory, int fileCount){
+
+    DIR *dir = opendir(baseDirectory);
+
+    if ((dir = opendir(baseDirectory)) == NULL){
+        printf("%s %s %s\n\n", "Error:", baseDirectory, "directory does not exist");
+    } else {
+        printf("%s %s %s\n\n", "Success: Opened", baseDirectory, "directory");
+    }
+
+}
 
 int main(int argc, char *argv[]){
+
+    // Variables
+    FILE *archive;
+    char *archiveFile;
+    char *baseDirectory;
+    int fileCount = 0;
 
     if (argc < 4){
         printf("%s\n", "Please enter your input in the following format:");
@@ -11,6 +30,17 @@ int main(int argc, char *argv[]){
     }
 
     if (strcmp(argv[1], "-c") == 0){    // store
+        archiveFile = argv[2];
+        baseDirectory = argv[3];
+
+        archive = fopen(archiveFile,"w");
+        if (archive == NULL){
+            printf("%s\n\n", "Error: Failed to open .ad archive file");
+            exit(1);
+        } else {
+            printf("%s\n", "Success: Opened .ad archive file");
+        }
+        storeFiles(archive, baseDirectory, fileCount);
 
     } else if (strcmp(argv[1], "-a") == 0){    // append
 
@@ -30,5 +60,7 @@ int main(int argc, char *argv[]){
         printf("%s\n\n", "Please enter a valid flag value.");
         exit(1);
     }
+
+    return 0;
 
 }
