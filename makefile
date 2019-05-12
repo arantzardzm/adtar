@@ -1,4 +1,11 @@
-all: adtar
+CC=gcc
+src = $(wildcard *.c)
+obj = $(src:.c=.o)
 
-adtar: adtar.c
-	gcc -o adtar adtar.c
+adtar: $(obj)
+	$(CC) -o $@ $^
+
+.PHONY: clean
+clean:
+	rm -f $(obj) adtar
+	rm -f *.gch
