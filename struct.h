@@ -20,10 +20,10 @@ typedef struct {
   struct list *next;
 } list;
 
-extern int add(list **, metadata *);
-extern list *get_next(list **);
+extern void add(list **, metadata **);
+extern struct list *get_next(list **);
 extern int next_is_empty(list **);
-extern metadata get_metadata(list **);
+extern metadata *get_metadata(list **);
 extern void destruct(list **);
 
 #endif // STRUCT_H_

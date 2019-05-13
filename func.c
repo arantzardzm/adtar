@@ -13,9 +13,17 @@
 #define X 2
 #define M 3
 #define P 4
+#define DIR_ 1
+#define FILE_ 2
 
+list *head;
+list *list_current;
+
+// HELPER FUNCS
 static int check_ext(char *);
-int is_directory(char *);
+static int is_directory_or_file(char *);
+static void add_to_archive(metadata **, char *, char *);
+static void populate_archive(int, char *, char *);
 
 // ADAPTED FROM STACK OVERFLOW -
 // https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
@@ -28,20 +36,23 @@ int check_ext(char *filename) {
   return 1;
 }
 
-int is_directory(char *dir) {
+int is_directory_or_file(char *dir) {
   struct stat fileInfo;
   stat(dir, &fileInfo);
   if (S_ISDIR(fileInfo.st_mode)) {
-    return 1;
+    return DIR_;
+  } else if (S_ISREG(fileInfo.st_mode)) {
+    return FILE_;
   } else {
     return 0;
   }
 }
 
 extern args *parse_args(int argc, char **argv) {
-  int flag, temp;
+  int flag, temp, file_start, i;
   args *args_ = malloc(sizeof(args_));
   args_->occurence = 0;
+  args_->no_of_files = 0;
 
   if (argc < 4) {
     fprintf(
@@ -92,10 +103,19 @@ extern args *parse_args(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
     args_->adtar_file = argv[4];
-    args_->directory = argv[5];
+    file_start = 5;
   } else {
     args_->adtar_file = argv[2];
-    args_->directory = argv[3];
+    file_start = 3;
+  }
+  args_->file_list = malloc(sizeof(file_name) * (argc - file_start));
+  i = 0;
+  while (file_start < argc) {
+    strncpy(args_->file_list[i].name, argv[file_start], 200);
+    args_->file_list[file_start].name[199] = '\0';
+    args_->no_of_files++;
+    file_start++;
+    i++;
   }
 
   if (!check_ext(args_->adtar_file)) {
@@ -106,39 +126,115 @@ extern args *parse_args(int argc, char **argv) {
   return args_;
 }
 
-extern void create_archive(char *adtar_file, char *base_directory,
-                           int occurence) {
-  DIR *dir;
-  struct dirent *dirp;
-  FILE *archive;
+extern void create_archive(char *adtar_file, file_name *file_list,
+                           int no_of_files, int occurence) {
+  FILE *archive_fp;
+  list *archive_head;
+  long location = -1;
+  int version = 0;
+  int i;
 
-  // OPEN DIRECTORY AND
-  archive = fopen(adtar_file, "w");
-  if (archive == NULL) {
-    perror("Open <archive-file> failed");
+  // OPEN DIRECTORY AND ARCHIVE
+  archive_fp = fopen(adtar_file, "w");
+  if (archive_fp == NULL) {
+    perror("Open <adtar_file> failed");
     exit(EXIT_FAILURE);
   }
+  fprintf(archive_fp, "%ld\n", location);
+  fclose(archive_fp);
+  VLOG(DEBUG, "Created file at ~/%s", adtar_file);
 
-  if ((dir = opendir(base_directory)) == NULL) {
-    perror("Open <directory> failed");
-    exit(EXIT_FAILURE);
-  } else {
-    printf("%s %s %s\n", "Success: Opened", base_directory, "directory");
+  head = list_current;
 
-    // Iterate through directory and its files
-    while ((dirp = readdir(dir)) != NULL) {
-      char *base = base_directory;
-      char *name = dirp->d_name;
-
-      printf("%s, %s\n", base, name);
-      char *concat = strcat(base, name);
-
-      if (is_directory(concat)) { // directory
-        VLOG(DEBUG, "It is a directory");
-        // storeFiles(archive, baseDir + dirp->d_name + "/", true, file_count);
-      } else {
-        VLOG(DEBUG, "It is not a directory");
-      }
+  for (i = 0; i < no_of_files; i++) {
+    char *path = file_list[i].name;
+    switch (is_directory_or_file(path)) {
+    case DIR_:
+      VLOG(DEBUG, "%s is a directory", path);
+      break;
+    case FILE_:
+      VLOG(DEBUG, "%s is a file", path);
+      populate_archive(FILE_, path, adtar_file);
+      break;
+    default:
+      VLOG(DEBUG, "What is this %s", path);
     }
   }
+  if ((archive_fp = fopen(adtar_file, "ab")) == NULL) {
+    perror("open adtar file failed");
+    exit(EXIT_FAILURE);
+  }
+
+  location = ftell(archive_fp);
+  do {
+    if (fwrite(list_current, sizeof(metadata), 1, archive_fp) != 1) {
+      perror("Write Metadata to file error");
+      exit(EXIT_FAILURE);
+    }
+  } while ((list_current = get_next(&list_current)) != NULL);
+  free(list_current);
+  free(head);
+  fclose(archive_fp);
+
+  if ((archive_fp = fopen(adtar_file, "r+")) == NULL) {
+    perror("Open adtar file failed");
+    exit(EXIT_FAILURE);
+  }
+  fprintf(archive_fp, "%ld\n", location);
+  fclose(archive_fp);
+}
+
+void populate_archive(int dir_flag, char *path, char *adtar_file) {
+  char *full_path = basename(path);
+  DIR *dir;
+  struct dirent *dirp;
+  metadata *metadata_ = malloc(sizeof(metadata));
+  switch (dir_flag) {
+  case DIR_:
+    if ((dir = opendir(path)) == NULL) {
+      perror("Open <file/directory list> failed");
+      exit(EXIT_FAILURE);
+    }
+    // Iterate through directory and its files
+    while ((dirp = readdir(dir)) != NULL) {
+    }
+    break;
+  case FILE_:
+    get_file_stat(path, &metadata_);
+    strncat(metadata_->name, full_path, 200);
+    metadata_->name[199] = '\0';
+    add_to_archive(&metadata_, full_path, adtar_file);
+    break;
+  }
+}
+
+void add_to_archive(metadata **metadata_, char *path, char *archive_file) {
+  metadata *metadata__ = *metadata_;
+  FILE *fp_add;
+  FILE *archive_fp;
+  char buffer[512];
+  int size = 0;
+
+  if ((fp_add = fopen(path, "rb")) == NULL) {
+    perror("Failed to open file");
+    exit(EXIT_FAILURE);
+  }
+
+  if ((archive_fp = fopen(archive_file, "ab")) == NULL) {
+    perror("Failed to archive file");
+    exit(EXIT_FAILURE);
+  }
+
+  metadata__->offset = ftell(archive_fp);
+  add(&list_current, &metadata__);
+
+  while ((size = fread(buffer, sizeof(char), sizeof(buffer), fp_add)) > 0) {
+    if (fwrite(buffer, sizeof(char), size, archive_fp) != size) {
+      perror("write to archive failed");
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  fclose(fp_add);
+  fclose(archive_fp);
 }

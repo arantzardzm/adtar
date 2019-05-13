@@ -1,3 +1,3 @@
 #include "common.h"
 
-int verbose = NONE;
+int verbose = DEBUG;

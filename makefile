@@ -1,11 +1,11 @@
 CC=gcc
 CFLAGS = -Wall -g
 
-obj = adtar.o common.o func.o
+obj = adtar.o common.o func.o struct.o
 
 adtar: $(obj)
 	$(CC) $(CFLAGS) -o adtar $(obj)
-adtar: common.h func.h
+adtar: common.h func.h struct.h
 
 .PHONY: clean
 clean:
