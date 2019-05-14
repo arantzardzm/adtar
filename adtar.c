@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 
   // CHECK INVOKATION
   parse_args(argc, argv);
-  if (args_->no_of_files < 1) {
+  if ((args_->flag == A || args_->flag == C) && args_->no_of_files < 1) {
     fprintf(stderr, "No files passed\n");
     destruct_args();
     exit(EXIT_FAILURE);

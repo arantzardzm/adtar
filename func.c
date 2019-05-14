@@ -62,8 +62,9 @@ extern void parse_args(int argc, char **argv) {
   args_ = args__;
   args_->occurence = 0;
   args_->no_of_files = 0;
+  args_->file_list = NULL;
 
-  if (argc < 4) {
+  if (argc < 3) {
     fprintf(
         stderr, "%s\n%s\n",
         "Invokation Error: Please enter your input in the following format:",
@@ -103,7 +104,24 @@ extern void parse_args(int argc, char **argv) {
     }
   }
 
-  if (args_->occurence > 0) {
+  if (args_->flag == X || args_->flag == M || args_->flag == P) {
+    file_start = 0;
+    if (args_->occurence > 0) {
+      if (argc < 5) {
+        fprintf(
+            stderr, "%s\n%s\n",
+            "Invokation Error: Please enter your input in the following "
+            "format:",
+            "./adtar {-c|-a|-x|-m|-p|-o NUMBER} <archive-file> <file/directory "
+            "list>");
+        destruct_args();
+        exit(EXIT_FAILURE);
+      }
+      args_->adtar_file = argv[4];
+    } else {
+      args_->adtar_file = argv[2];
+    }
+  } else if (args_->occurence > 0) {
     if (argc < 6) {
       fprintf(
           stderr, "%s\n%s\n",
@@ -116,17 +134,28 @@ extern void parse_args(int argc, char **argv) {
     args_->adtar_file = argv[4];
     file_start = 5;
   } else {
+    if (argc < 4) {
+      fprintf(
+          stderr, "%s\n%s\n",
+          "Invokation Error: Please enter your input in the following format:",
+          "./adtar {-c|-a|-x|-m|-p|-o NUMBER} <archive-file> <file/directory "
+          "list>");
+      destruct_args();
+      exit(EXIT_FAILURE);
+    }
     args_->adtar_file = argv[2];
     file_start = 3;
   }
-  args_->file_list = malloc(sizeof(file_name) * (argc - file_start));
-  i = 0;
-  while (file_start < argc) {
-    strncpy(args_->file_list[i].name, argv[file_start], 200);
-    args_->file_list[file_start].name[199] = '\0';
-    args_->no_of_files++;
-    file_start++;
-    i++;
+  if (file_start >= 3) {
+    args_->file_list = malloc(sizeof(file_name) * (argc - file_start));
+    i = 0;
+    while (file_start < argc) {
+      strncpy(args_->file_list[i].name, argv[file_start], 200);
+      args_->file_list[file_start].name[199] = '\0';
+      args_->no_of_files++;
+      file_start++;
+      i++;
+    }
   }
 
   if (!check_ext(args_->adtar_file)) {
@@ -429,42 +458,41 @@ void add_to_archive(metadata **metadata_, char *path) {
   fclose(archive_fp);
 }
 
-void display_metadata(){
+void display_metadata() {}
 
-}
+void print_path(char *path_name, int level, int type) {
+  int i;
+  char name[256];
+  char new_name[256];
+  char *pos = strchr(path_name, '/');
 
-void print_path(char *path_name, int level, int type){
-    int i;
-    char name[256];
-    char new_name[256];
-    char *pos = strchr(path_name, '/');
+  if (pos != NULL) {
+    strncpy(name, path_name, (pos - path_name) + 1);
+    name[(pos - path_name) + 1] = '\0';
+    memmove(new_name, path_name + (pos - path_name) + 1,
+            (strlen(path_name) - strlen(name)) + 1);
+    name[(pos - path_name) + 1] = '\0';
+    print_path(new_name, level + 1, type);
 
-    if (pos != NULL){
-        strncpy(name, path_name, (pos-path_name)+1);
-        name[(pos-path_name)+1] = '\0';
-        memmove(new_name,path_name+(pos-path_name)+1,(strlen(path_name)-strlen(name)) + 1);
-        name[(pos-path_name)+1] = '\0';
-        print_path(new_name, level+1, type);
-
-    } else {
-        if (level > 0){
-            printf(" |");
-        }
-        for (i=0; i<level; i++){
-            printf("--");
-        }
-        // Directories
-        if (type == DIR_){
-            strncpy(name, path_name, strlen(path_name));
-            name[strlen(path_name)] = '/';
-            name[strlen(path_name)+1] = '\0';
-            printf("%s\n", name);
-        } else
-        // Files
-        if (type == FILE_){
-            printf("%s\n", path_name);
-        }
+  } else {
+    if (level > 0) {
+      printf(" |");
     }
+    for (i = 0; i < level; i++) {
+      printf("--");
+    }
+    // Directories
+    if (type == DIR_) {
+      strncpy(name, path_name, strlen(path_name));
+      name[strlen(path_name)] = '/';
+      name[strlen(path_name) + 1] = '\0';
+      printf("%s\n", name);
+    } else
+        // Files
+        if (type == FILE_) {
+      printf("%s\n", path_name);
+    }
+  }
 }
 
 void display_hierarchy() {
@@ -492,11 +520,11 @@ void display_hierarchy() {
   }
 
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
-      metadata_ = (metadata *)buffer;
-      if (metadata_ == NULL) {
-        destruct_all("Reading metadata from file to struct failed");
-      }
-      print_path(metadata_->name, 0, metadata_->type);
+    metadata_ = (metadata *)buffer;
+    if (metadata_ == NULL) {
+      destruct_all("Reading metadata from file to struct failed");
+    }
+    print_path(metadata_->name, 0, metadata_->type);
   }
   printf("\n");
   fclose(archive_fp);
