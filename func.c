@@ -429,43 +429,42 @@ void add_to_archive(metadata **metadata_, char *path) {
   fclose(archive_fp);
 }
 
-void print_path(char *path_name, int level, int type) {
-  int i;
-  char name[256];
-  char new_name[256];
+void display_metadata(){
 
-  char *pos = strchr(path_name, '/');
-  if (pos != NULL) {
-    strncpy(name, path_name, (pos - path_name) + 1);
-    name[(pos - path_name) + 1] = '\0';
-    if (level > 0) {
-      printf(" |");
-    }
-    for (i = 0; i < level; i++) {
-      printf("--");
-    }
-    printf("%s\n", name);
-    memmove(new_name, path_name + (pos - path_name) + 1,
-            (strlen(path_name) - strlen(name)) + 1);
-    name[(pos - path_name) + 1] = '\0';
-    print_path(new_name, level + 1, type);
+}
 
-  } else {
-    if (level > 0) {
-      printf(" |");
+void print_path(char *path_name, int level, int type){
+    int i;
+    char name[256];
+    char new_name[256];
+    char *pos = strchr(path_name, '/');
+
+    if (pos != NULL){
+        strncpy(name, path_name, (pos-path_name)+1);
+        name[(pos-path_name)+1] = '\0';
+        memmove(new_name,path_name+(pos-path_name)+1,(strlen(path_name)-strlen(name)) + 1);
+        name[(pos-path_name)+1] = '\0';
+        print_path(new_name, level+1, type);
+
+    } else {
+        if (level > 0){
+            printf(" |");
+        }
+        for (i=0; i<level; i++){
+            printf("--");
+        }
+        // Directories
+        if (type == DIR_){
+            strncpy(name, path_name, strlen(path_name));
+            name[strlen(path_name)] = '/';
+            name[strlen(path_name)+1] = '\0';
+            printf("%s\n", name);
+        } else
+        // Files
+        if (type == FILE_){
+            printf("%s\n", path_name);
+        }
     }
-    for (i = 0; i < level; i++) {
-      printf("--");
-    }
-    if (type == DIR_) {
-      strncpy(name, path_name, strlen(path_name));
-      name[strlen(path_name)] = '/';
-      name[strlen(path_name) + 1] = '\0';
-      printf("%s\n", name);
-    } else if (type == FILE_) {
-      printf("%s\n", path_name);
-    }
-  }
 }
 
 void display_hierarchy() {
@@ -492,14 +491,13 @@ void display_hierarchy() {
     destruct_all("fseek to metadata location on extract_archive error");
   }
 
-  printf("\n");
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
-    metadata_ = (metadata *)buffer;
-    if (metadata_ == NULL) {
-      destruct_all("Reading metadata from file to struct failed");
-    }
-    print_path(metadata_->name, 0, metadata_->type);
-    printf("\n");
+      metadata_ = (metadata *)buffer;
+      if (metadata_ == NULL) {
+        destruct_all("Reading metadata from file to struct failed");
+      }
+      print_path(metadata_->name, 0, metadata_->type);
   }
+  printf("\n");
   fclose(archive_fp);
 }
