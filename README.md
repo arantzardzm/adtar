@@ -34,5 +34,3 @@ designated with <archive-file>.
   * `-m`: print out the meta-data (owner, group, rights, type of file) for all files/directories that have been archived in the <archive-file>.
   * `-p`: display the hierarchy(-ies) of the files and directories stored in the <archive-file>. Do this in a way that can be
 readily understood by the user.
-
-### Implementation:
