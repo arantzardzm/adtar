@@ -22,6 +22,7 @@
 
 extern list *head;
 extern args *args_;
+const char *modes[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
 
 // HELPER FUNCS
 static int check_ext(char *);
@@ -458,7 +459,51 @@ void add_to_archive(metadata **metadata_, char *path) {
   fclose(archive_fp);
 }
 
-void display_metadata() {}
+void display_metadata() {
+    int i,j;
+    FILE *archive_fp;
+    char buffer[512];
+    metadata_offset location;
+    metadata *metadata_;
+    char permissions[10];
+
+    if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+      destruct_all("print metadata failed to read <adtar-file>");
+    }
+    if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
+      destruct_all(
+          "Reading offset in print metadata from <adtar_file> failed");
+      return;
+    }
+    fclose(archive_fp);
+
+    if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+      destruct_all("print metadata failed to read <adtar_file> failed");
+    }
+
+    if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+      destruct_all("fseek to metadata location on print metadata error");
+    }
+
+    while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+      metadata_ = (metadata *)buffer;
+      if (metadata_ == NULL) {
+        destruct_all("Reading metadata from file to struct failed");
+      }
+
+      *permissions = '\0';
+      // setting read, write, and execute permissions
+      for (i=2; i>=0; i--){
+          j = (metadata_->perms >> (i*3)) & 07;
+          strcat(permissions,modes[j]);
+      }
+      // print permissions
+      printf("%d %s %d %d% 6d %s %s\n", metadata_->type, permissions, metadata_->uid, metadata_->gid, metadata_->file_size, metadata_->last_modified, metadata_->name);
+    }
+    printf("\n");
+    fclose(archive_fp);
+
+}
 
 void print_path(char *path_name, int level, int type) {
   int i;
@@ -516,7 +561,7 @@ void display_hierarchy() {
   }
 
   if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
-    destruct_all("fseek to metadata location on extract_archive error");
+    destruct_all("fseek to metadata location on display hierarchy error");
   }
 
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
