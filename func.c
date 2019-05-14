@@ -370,8 +370,8 @@ void extract_archive() {
     }
     if (metadata_->type == DIR_) {
       if (mkdir(metadata_->name, metadata_->perms) == -1) {
-        fprintf(stderr, "Failed to create directory %s", metadata_->name);
-        destruct_all(" ");
+        // fprintf(stderr, "Failed to create directory %s", metadata_->name);
+        // destruct_all(" ");
       }
       VLOG(DEBUG, "creating folder %s", metadata_->name);
       VLOG(DEBUG, "------------------------");
