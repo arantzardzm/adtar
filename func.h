@@ -1,6 +1,7 @@
 #ifndef FUNC_H_
 #define FUNC_H_
 
+// flags to be used in adtar (compress, append, extract, print, display)
 enum flag_type {
   C,
   A,
@@ -25,8 +26,10 @@ typedef struct {
   char *adtar_file;
 } args;
 
+// read, write, and execute mode declaration
 extern const char *modes[];
 
+// external functions for adtar implementation
 extern void parse_args(int, char **);
 extern void create_archive();
 extern void append_archive();

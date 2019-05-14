@@ -21,6 +21,7 @@ typedef struct {
   struct list *next;
 } list;
 
+// external functions for list and metadata implementation
 extern void add(metadata **);
 extern list *get_next(list **);
 extern int next_is_empty(list **);

@@ -1,6 +1,6 @@
-# adtar 
+# adtar
 
-### Operating Sytems - NYUAD 
+### Operating Sytems - NYUAD
 Jaisal Friedman & Arantza Rodriguez  
 
 ### Description:
@@ -12,7 +12,7 @@ For our Operating Systems course, we developed an archiving application (adtar) 
  * README.txt
  * Makefile
  * adtar.c
- * func.c 
+ * func.c
  * func.h
  * struct.c
  * struct.h
@@ -34,3 +34,5 @@ designated with <archive-file>.
   * `-m`: print out the meta-data (owner, group, rights, type of file) for all files/directories that have been archived in the <archive-file>.
   * `-p`: display the hierarchy(-ies) of the files and directories stored in the <archive-file>. Do this in a way that can be
 readily understood by the user.
+
+### Implementation:

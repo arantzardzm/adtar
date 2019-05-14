@@ -48,15 +48,16 @@ int check_ext(char *filename) {
 int is_directory_or_file(char *dir) {
   struct stat fileInfo;
   stat(dir, &fileInfo);
-  if (S_ISDIR(fileInfo.st_mode)) {
+  if (S_ISDIR(fileInfo.st_mode)) {  // directory
     return DIR_;
-  } else if (S_ISREG(fileInfo.st_mode)) {
+} else if (S_ISREG(fileInfo.st_mode)) {  // file
     return FILE_;
   } else {
-    return 0;
+    return 0; // compressed
   }
 }
 
+// parse arguments typed in by the user
 extern void parse_args(int argc, char **argv) {
   int flag, temp, file_start, i;
   args *args__ = malloc(sizeof(args));
@@ -68,7 +69,7 @@ extern void parse_args(int argc, char **argv) {
   if (argc < 3) {
     fprintf(
         stderr, "%s\n%s\n",
-        "Invokation Error: Please enter your input in the following format:",
+        "Invocation Error: Please enter your input in the following format:",
         "./adtar {-c|-a|-x|-m|-p|-o NUMBER} <archive-file> <file/directory "
         "list>");
     destruct_args();

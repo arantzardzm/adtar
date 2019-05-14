@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
   // DECLARE VARS
   int i;
 
-  // CHECK INVOKATION
+  // CHECK INVOCATION
   parse_args(argc, argv);
   if ((args_->flag == A || args_->flag == C) && args_->no_of_files < 1) {
     fprintf(stderr, "No files passed\n");

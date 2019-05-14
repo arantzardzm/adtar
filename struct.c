@@ -3,12 +3,15 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
+// define the three states of the files (directory, file, compressed)
 #define DIR_ 1
 #define FILE_ 2
 #define COMPRESSED_ 3
 
+// node head
 extern list *head;
 
+// adding a new node to the linked list
 void add(metadata **metadata__) {
   metadata *metadata_ = *metadata__;
   list *new_node = malloc(sizeof(list));
@@ -33,15 +36,19 @@ void add(metadata **metadata__) {
   this_->next = new_node;
 }
 
+// get next head of node
 list *get_next(list **this) {
   list *this_ = *this;
   return this_->next;
 }
+
+// get metadata of current node
 metadata *get_metadata(list **this) {
   list *this_ = *this;
   return this_->metadata_;
 }
 
+// print out the metadata when compressing the files
 void print_metadata(int debug, metadata **metadata__) {
   metadata *metadata_ = *metadata__;
   char *file_type;
@@ -54,13 +61,13 @@ void print_metadata(int debug, metadata **metadata__) {
 
   switch (metadata_->type) {
   case DIR_:
-    file_type = "-d";
+    file_type = "-d";    // directory
     break;
   case FILE_:
-    file_type = "-f";
+    file_type = "-f";    // file
     break;
   case COMPRESSED_:
-    file_type = "-c";
+    file_type = "-c";    // compressed
     break;
   default:
     fprintf(stderr, "Bad file type found %d\n", metadata_->type);
@@ -81,11 +88,13 @@ void print_metadata(int debug, metadata **metadata__) {
   }
 }
 
+// check if next node is empty
 int next_is_empty(list **this) {
   list *this_ = *this;
   return (this_->next == NULL);
 }
 
+// free the memory space used on error or when program terminates
 void destruct_struct() {
   VLOG(DEBUG, "destructing");
   if (head == NULL)
