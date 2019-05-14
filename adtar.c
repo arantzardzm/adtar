@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     create_archive();
     break;
   case A:
-
+    append_archive();
     break;
   case X:
     extract_archive();

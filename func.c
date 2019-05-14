@@ -184,7 +184,6 @@ extern void create_archive() {
   FILE *archive_fp;
   list *list_current;
   metadata_offset location = {location.offset = -1};
-  int version = 0;
   int i;
 
   // OPEN DIRECTORY AND ARCHIVE
@@ -282,13 +281,60 @@ void populate_archive(int dir_flag, char *path) {
   }
 }
 
+void append_archive() {
+  FILE *archive_fp;
+  list *list_current;
+  char buffer[512];
+  metadata *metadata_;
+  metadata_offset location;
+  int i;
+
+  // OPEN DIRECTORY AND ARCHIVE
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("Open <adtar_file> failed");
+  }
+  if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
+    perror("Reading offset from <adtar_file> failed");
+    return;
+  }
+  fclose(archive_fp);
+
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("Open <adtar_file> failed");
+  }
+
+  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+    destruct_all("fseek to metadata location on extract_archive error");
+  }
+  VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
+       ftell(archive_fp));
+
+  // READ DIRS & CREATE FOLDERS
+  while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+    metadata_ = (metadata *)buffer;
+    if (metadata_ == NULL) {
+      fclose(archive_fp);
+      destruct_all("Reading metadata from <adtar-file> to struct failed");
+    }
+    add(&metadata_);
+  }
+
+  // REMOVE METADATA FROM FILE
+  if (truncate(args_->adtar_file, location.offset) != 0) {
+    perror("truncate error");
+    exit(EXIT_FAILURE);
+  }
+  fclose(archive_fp);
+
+  create_archive();
+}
+
 void extract_archive() {
   FILE *archive_fp;
   list *list_current;
   char buffer[512];
   metadata *metadata_;
   metadata_offset location;
-  int version = 0;
   int i;
 
   // OPEN DIRECTORY AND ARCHIVE
