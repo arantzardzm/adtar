@@ -9,15 +9,15 @@ For our Operating Systems course, we developed an archiving application (adtar) 
 
 ### Files Included:
 
-*README.txt
-*Makefile
-*adtar.c
-*func.c 
-*func.h
-*struct.c
-*struct.h
-*common.c
-*common.h
+ * README.txt
+ * Makefile
+ * adtar.c
+ * func.c 
+ * func.h
+ * struct.c
+ * struct.h
+ * common.c
+ * common.h
 
 ### Run Instructions:
 
