@@ -169,7 +169,7 @@ extern void create_archive() {
     char *path = args_->file_list[i].name;
     switch (is_directory_or_file(path)) {
     case DIR_:
-      VLOG(DEBUG, "%s is a directory", path);
+      populate_archive(DIR_, path);
       break;
     case FILE_:
       populate_archive(FILE_, path);
@@ -192,6 +192,7 @@ extern void create_archive() {
 
   do {
     print_metadata(1, &list_current->metadata_);
+    VLOG(DEBUG, "------------------------");
     if (fwrite(list_current->metadata_, sizeof(metadata), 1, archive_fp) != 1) {
       destruct_all("Write Metadata to file error");
     }
@@ -209,10 +210,11 @@ extern void create_archive() {
 }
 
 void populate_archive(int dir_flag, char *path) {
-  char *full_path = basename(path);
   DIR *dir;
   struct dirent *dirp;
   metadata *metadata_ = malloc(sizeof(metadata));
+  VLOG(DEBUG, "populating archive with file %s", path);
+
   switch (dir_flag) {
   case DIR_:
     if ((dir = opendir(path)) == NULL) {
@@ -221,11 +223,32 @@ void populate_archive(int dir_flag, char *path) {
     }
     // Iterate through directory and its files
     while ((dirp = readdir(dir)) != NULL) {
+      // check not inside . and .. directories
+      if (strcmp(dirp->d_name, ".") != 0 && strcmp(dirp->d_name, "..") != 0) {
+        char *full_path = malloc(strlen(path) + strlen(dirp->d_name) + 2);
+        snprintf(full_path, strlen(path) + strlen(dirp->d_name) + 2, "%s/%s",
+                 path, dirp->d_name);
+        if ((dirp->d_type & DT_DIR)) {
+          populate_archive(DIR_, full_path);
+          free(full_path);
+        } else {
+          populate_archive(FILE_, full_path);
+          free(full_path);
+        }
+      }
     }
+    if (closedir(dir)) {
+      free(metadata_);
+      destruct_all("Close dir failed");
+    }
+
+    // ADD original DIR
+    add_file_stat(path, &metadata_);
+    add(&metadata_);
     break;
   case FILE_:
-    add_file_stat(full_path, &metadata_);
-    add_to_archive(&metadata_, full_path);
+    add_file_stat(path, &metadata_);
+    add_to_archive(&metadata_, path);
     break;
   }
 }
@@ -325,6 +348,7 @@ void add_file_stat(char *path, metadata **metadata__) {
   metadata_->gid = file_stat.st_gid;
   metadata_->file_size = file_stat.st_size;
   metadata_->perms = file_stat.st_mode;
+  // metadata_->version = meta
 }
 
 void add_to_archive(metadata **metadata_, char *path) {
@@ -344,7 +368,6 @@ void add_to_archive(metadata **metadata_, char *path) {
   }
 
   metadata__->offset = ftell(archive_fp);
-  VLOG(DEBUG, "HERE");
   add(&metadata__);
 
   while ((size = fread(buffer, sizeof(char), sizeof(buffer), fp_add)) > 0) {
