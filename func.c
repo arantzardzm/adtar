@@ -363,65 +363,111 @@ void extract_archive() {
 
   // READ DIRS & CREATE FOLDERS
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
-    metadata_ = (metadata *)buffer;
+    metadata *temp;
+    metadata *metadata_ = malloc(sizeof(metadata));
+    temp = (metadata *)buffer;
+    memcpy(metadata_, temp, sizeof(metadata));
     if (metadata_ == NULL) {
       fclose(archive_fp);
       destruct_all("Reading metadata from file to struct failed");
     }
-    if (metadata_->type == DIR_) {
-      if (mkdir(metadata_->name, metadata_->perms) == -1) {
-        fprintf(stderr, "Failed to create directory %s", metadata_->name);
-        destruct_all(" ");
-      }
-      VLOG(DEBUG, "creating folder %s", metadata_->name);
-      VLOG(DEBUG, "------------------------");
-    }
+    VLOG(DEBUG, "reading %s - %s to list", metadata_->name,
+         metadata_->last_modified);
+    add(&metadata_);
   }
   fclose(archive_fp);
 
-  // RESET SEEK
-  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
-    destruct_all("Open <adtar_file> failed");
+  if (head == NULL) {
+    fprintf(stderr, "Struct has nothing to extract");
+    destruct_all(" ");
   }
+  list *this_ = head;
+  list *output_head = NULL;
+  list *list_output;
+  do {
+    int version = 0;
+    list *search_upon = this_;
+    list *temp_output;
+    VLOG(DEBUG, "start searching upon at %s - %s", search_upon->metadata_->name,
+         search_upon->metadata_->last_modified);
+    do {
+      if (strcmp(search_upon->metadata_->name, this_->metadata_->name) == 0) {
+        temp_output = search_upon;
+        version++;
+      }
+    } while ((search_upon = get_next(&search_upon)) != NULL &&
+             version <= args_->occurence);
+    VLOG(DEBUG, "finish searching upon at %s - %s",
+         search_upon->metadata_->name, search_upon->metadata_->last_modified);
+    VLOG(DEBUG, "----------------------");
+    if (output_head == NULL) {
+      output_head = list_output;
+      list_output = temp_output;
+      VLOG(DEBUG, "Adding %s at %s to output struct",
+           list_output->metadata_->name, list_output->metadata_->last_modified);
+    } else {
+      list_output->next = temp_output;
+      list_output = temp_output;
+      VLOG(DEBUG, "Adding %s at %s to output struct",
+           list_output->metadata_->name, list_output->metadata_->last_modified);
+    }
+  } while ((this_ = get_next(&this_)) != NULL);
 
-  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
-    destruct_all("fseek to metadata location on extract_archive error");
-  }
+  destruct_struct();
+
+  // // RESET SEEK
+  // if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+  //   destruct_all("Open <adtar_file> failed");
+  // }
+  //
+  // if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+  //   destruct_all("fseek to metadata location on extract_archive error");
+  // }
+
+  // if (metadata_->type == DIR_) {
+  //   if (mkdir(metadata_->name, metadata_->perms) == -1) {
+  //     fprintf(stderr, "Failed to create directory %s", metadata_->name);
+  //     destruct_all(" ");
+  //   }
+  //   VLOG(DEBUG, "creating folder %s", metadata_->name);
+  //   VLOG(DEBUG, "------------------------");
+  // }
 
   // READ FILES AND CREATE THEM
-  while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
-    metadata_ = (metadata *)buffer;
-    if (metadata_ == NULL) {
-      fclose(archive_fp);
-      destruct_all("Reading metadata from file to struct failed");
-    }
-    if (metadata_->type == FILE_) {
-      // check occurence passed
-      if (metadata_->max_version >= args_->occurence) {
-        if (metadata_->version == args_->occurence) {
-          VLOG(DEBUG, "extracting file %s with version %d", metadata_->name,
-               metadata_->version);
-          VLOG(DEBUG, "------------------------");
-          extract_file(metadata_);
-        } else {
-          VLOG(DEBUG,
-               "searching for higher version number for file %s with version "
-               "%d, need version %d",
-               metadata_->name, metadata_->version, args_->occurence);
-        }
-      } else {
-        if (metadata_->version == 0) {
-          VLOG(DEBUG,
-               "extracting file %s with version %d, version is greater than "
-               "max version %d",
-               metadata_->name, metadata_->version, metadata_->max_version);
-          VLOG(DEBUG, "------------------------");
-          extract_file(metadata_);
-        }
-      }
-    }
-  }
-  fclose(archive_fp);
+  // while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+  //   metadata_ = (metadata *)buffer;
+  //   if (metadata_ == NULL) {
+  //     fclose(archive_fp);
+  //     destruct_all("Reading metadata from file to struct failed");
+  //   }
+  //   if (metadata_->type == FILE_) {
+  //     // check occurence passed
+  //     if (metadata_->max_version >= args_->occurence) {
+  //       if (metadata_->version == args_->occurence) {
+  //         VLOG(DEBUG, "extracting file %s with version %d", metadata_->name,
+  //              metadata_->version);
+  //         VLOG(DEBUG, "------------------------");
+  //         extract_file(metadata_);
+  //       } else {
+  //         VLOG(DEBUG,
+  //              "searching for higher version number for file %s with version
+  //              "
+  //              "%d, need version %d",
+  //              metadata_->name, metadata_->version, args_->occurence);
+  //       }
+  //     } else {
+  //       if (metadata_->version == 0) {
+  //         VLOG(DEBUG,
+  //              "extracting file %s with version %d, version is greater than "
+  //              "max version %d",
+  //              metadata_->name, metadata_->version, metadata_->max_version);
+  //         VLOG(DEBUG, "------------------------");
+  //         extract_file(metadata_);
+  //       }
+  //     }
+  //   }
+  // }
+  // fclose(archive_fp);
 }
 
 void extract_file(metadata *metadata_) {
