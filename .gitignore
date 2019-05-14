@@ -1,5 +1,9 @@
 # Project specs
 adtar
+a.out
+.DS_Store
+test.ad
+obj
 
 # Byte
 -compiled / optimized / DLL files

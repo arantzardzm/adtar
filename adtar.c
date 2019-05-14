@@ -1,58 +1,43 @@
 #include "common.h"
 #include "func.h"
-#include <dirent.h>
-#include <stdio.h>
+#include "struct.h"
 #include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
-int main(int argc, char *argv[]) {
+list *head;
+args *args_;
 
+int main(int argc, char **argv) {
   // DECLARE VARS
-  FILE *archive;
-  char *archiveFile;
-  char *baseDirectory;
-  int fileCount = 0;
+  int i;
 
-  if (argc < 4) {
-    printf("%s\n", "Please enter your input in the following format:");
-    printf("%s\n\n", "./adtar {-c|-a|-x|-m|-p|-o NUMBER} <archive-file> "
-                     "<file/directory list>");
+  // CHECK INVOKATION
+  parse_args(argc, argv);
+  if (args_->no_of_files < 1) {
+    fprintf(stderr, "No files passed\n");
+    destruct_args();
     exit(EXIT_FAILURE);
   }
 
-  if (strcmp(argv[1], "-c") == 0) { // store
-    archiveFile = argv[2];
-    baseDirectory = argv[3];
+  switch (args_->flag) {
+  case C:
+    create_archive();
+    break;
+  case A:
 
-    archive = fopen(archiveFile, "w");
-    if (archive == NULL) {
-      printf("%s\n\n", "Error: Failed to open .ad archive file");
-      exit(1);
-    } else {
-      printf("%s\n", "Success: Opened .ad archive file");
-    }
-    storeFiles(archive, baseDirectory, fileCount);
+    break;
+  case X:
+    extract_archive();
+    break;
+  case M:
 
-  } else if (strcmp(argv[1], "-a") == 0) { // append
+    break;
+  case P:
 
-  } else if (strcmp(argv[1], "-x") == 0) { // extract
-    if (strcmp(argv[2], "-o") == 0) {      // extract file number -o
-      int file_number = atoi(argv[3]);
-
-    } else {
-      int file_number = 0;
-    }
-
-  } else if (strcmp(argv[1], "-m") == 0) { // print
-
-  } else if (strcmp(argv[1], "-p") == 0) { // display
-
-  } else {
-    printf("%s\n\n", "Please enter a valid flag value.");
-    exit(1);
+    break;
+  default:
+    fprintf(stderr, "Bad Argument Found\n");
   }
 
-  return 0;
+  destruct_args();
+  return EXIT_SUCCESS;
 }

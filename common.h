@@ -11,15 +11,15 @@ extern int verbose;
 
 #define ALL 0x111
 
-#define VLOG(level, ...)\
-  if (level & verbose){\
-    if (level == INFO){\
-      fprintf(stdout, ##__VA_ARGS__);\
-      fprintf(stdout, "\n");\
-    } else {\
-      fprintf(stderr, ##__VA_ARGS__);\
-      fprintf(stderr, "\n");\
-    }\
-  }\
+#define VLOG(level, ...)                                                       \
+  if (level & verbose) {                                                       \
+    if (level == INFO) {                                                       \
+      fprintf(stdout, ##__VA_ARGS__);                                          \
+      fprintf(stdout, "\n");                                                   \
+    } else {                                                                   \
+      fprintf(stderr, ##__VA_ARGS__);                                          \
+      fprintf(stderr, "\n");                                                   \
+    }                                                                          \
+  }
 
 #endif
