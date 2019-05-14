@@ -4,32 +4,29 @@
 #include <stdlib.h>
 
 list *head;
+args *args_;
 
 int main(int argc, char **argv) {
   // DECLARE VARS
-  args *args_;
   int i;
 
   // CHECK INVOKATION
-  args_ = parse_args(argc, argv);
+  parse_args(argc, argv);
   if (args_->no_of_files < 1) {
     fprintf(stderr, "No files passed\n");
+    destruct_args();
     exit(EXIT_FAILURE);
-  }
-  for (i = 0; i < args_->no_of_files; i++) {
-    VLOG(DEBUG, "%s", args_->file_list[i].name);
   }
 
   switch (args_->flag) {
   case C:
-    create_archive(args_->adtar_file, args_->file_list, args_->no_of_files,
-                   args_->occurence);
+    create_archive();
     break;
   case A:
 
     break;
   case X:
-
+    extract_archive();
     break;
   case M:
 

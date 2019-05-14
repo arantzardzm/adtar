@@ -10,6 +10,10 @@ enum flag_type {
 };
 
 typedef struct {
+  long offset;
+} metadata_offset;
+
+typedef struct {
   char name[200];
 } file_name;
 
@@ -21,7 +25,9 @@ typedef struct {
   char *adtar_file;
 } args;
 
-extern args *parse_args(int, char **);
-extern void create_archive(char *, file_name *, int, int);
+extern void parse_args(int, char **);
+extern void create_archive();
+extern void extract_archive();
+extern void destruct_args();
 
 #endif // FUNC_H_

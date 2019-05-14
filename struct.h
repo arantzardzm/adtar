@@ -12,7 +12,6 @@ typedef struct {
   char last_modified[13]; // time of last modification
   mode_t perms;           // permission
   int type;               // file type
-  int compressed;         // compressed file
 } metadata;
 
 typedef struct {

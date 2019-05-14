@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
+#define DIR_ 1
+#define FILE_ 2
+#define COMPRESSED_ 3
+
 extern list *head;
 
 void add(metadata **metadata__) {
@@ -40,14 +44,36 @@ metadata *get_metadata(list **this) {
 
 void print_metadata(int debug, metadata **metadata__) {
   metadata *metadata_ = *metadata__;
+  char *file_type;
   char buf[1024];
+
+  if (metadata_ == NULL) {
+    fprintf(stderr, "Bad print_metadata called, metadata passed is NULL\n");
+    return;
+  }
+
+  switch (metadata_->type) {
+  case DIR_:
+    file_type = "-d";
+    break;
+  case FILE_:
+    file_type = "-f";
+    break;
+  case COMPRESSED_:
+    file_type = "-c";
+    break;
+  default:
+    fprintf(stderr, "Bad file type found %d\n", metadata_->type);
+    return;
+  }
 
   snprintf(buf, 1024,
            "File Name: %s\noffset:%ld\nuser id:%d\tgroup id: %d\nfile size: "
            "%d\nLast "
-           "modified %s",
+           "modified %s\n%s--%d",
            metadata_->name, metadata_->offset, metadata_->uid, metadata_->gid,
-           metadata_->file_size, metadata_->last_modified);
+           metadata_->file_size, metadata_->last_modified, file_type,
+           metadata_->perms);
   if (debug) {
     VLOG(DEBUG, "%s", buf);
   } else {
@@ -61,6 +87,8 @@ int next_is_empty(list **this) {
 }
 
 void destruct() {
+  if (head == NULL)
+    return;
   list *this_ = head;
   list *temp;
   while (!next_is_empty(&this_)) {
@@ -69,5 +97,6 @@ void destruct() {
     free(temp->metadata_);
     free(temp);
   }
+  free(this_->metadata_);
   free(this_);
 }
