@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 
   // CHECK INVOKATION
   parse_args(argc, argv);
-  if (args_->no_of_files < 1) {
+  if ((args_->flag == A || args_->flag == C) && args_->no_of_files < 1) {
     fprintf(stderr, "No files passed\n");
     destruct_args();
     exit(EXIT_FAILURE);
@@ -23,16 +23,16 @@ int main(int argc, char **argv) {
     create_archive();
     break;
   case A:
-
+    append_archive();
     break;
   case X:
     extract_archive();
     break;
   case M:
-
+    display_metadata();
     break;
   case P:
-
+    display_hierarchy();
     break;
   default:
     fprintf(stderr, "Bad Argument Found\n");
