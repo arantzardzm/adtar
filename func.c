@@ -287,7 +287,6 @@ void extract_file(metadata *metadata_) {
   if ((file = fopen(metadata_->name, "ab")) == NULL) {
     destruct_all("extract file failed to read file");
   }
-
   if (fseek(file, metadata_->offset, SEEK_SET) < 0) {
     destruct_all("Fseek to file offset in extract file failed");
   }
@@ -356,4 +355,44 @@ void add_to_archive(metadata **metadata_, char *path) {
 
   fclose(fp_add);
   fclose(archive_fp);
+}
+
+void process_path(char *path_name, int level){
+    char name[256];
+
+    char *pos = strchr(path_name, '/');
+    if (pos != NULL){
+        printf("here");
+    }
+
+}
+
+void display_hierarchy(){
+    FILE *archive_fp;
+    char buffer[512];
+    metadata_offset location;
+
+    if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL){
+        destruct_all("display hierarchy failed to read <adtar-file>");
+    }
+    if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
+      perror("Reading offset in display hierarchy from <adtar_file> failed");
+      return;
+    }
+    fclose(archive_fp);
+
+    if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+      destruct_all("display hierarchy failed to read <adtar_file> failed");
+    }
+
+    if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+      destruct_all("fseek to metadata location on extract_archive error");
+    }
+
+    while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+      process_path(args_->adtar_file, 0);
+    }
+
+    fclose(archive_fp);
+
 }

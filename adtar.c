@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
     break;
   case P:
-
+    display_hierarchy();
     break;
   default:
     fprintf(stderr, "Bad Argument Found\n");

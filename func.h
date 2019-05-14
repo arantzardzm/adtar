@@ -29,5 +29,6 @@ extern void parse_args(int, char **);
 extern void create_archive();
 extern void extract_archive();
 extern void destruct_args();
+extern void display_hierarchy();
 
 #endif // FUNC_H_
