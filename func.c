@@ -204,6 +204,8 @@ extern void create_archive() {
     exit(EXIT_FAILURE);
   }
   fwrite(&location, sizeof(metadata_offset), 1, archive_fp);
+  VLOG(DEBUG, "Location set to %ld and eof at %ld", location.offset,
+       ftell(archive_fp));
   fclose(archive_fp);
 }
 
@@ -235,7 +237,9 @@ void populate_archive(int dir_flag, char *path) {
 void extract_archive() {
   FILE *archive_fp;
   list *list_current;
-  metadata *metadata_ = malloc(sizeof(metadata));
+  char buffer[512];
+
+  metadata *metadata_;
   metadata_offset location;
   int version = 0;
   int i;
@@ -262,13 +266,12 @@ void extract_archive() {
   }
 
   VLOG(DEBUG, "File to set %ld", location.offset);
-
-  while (fread(&metadata_, sizeof(metadata), 1, archive_fp) == 1) {
+  while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+    metadata_ = (metadata *)buffer;
     if (metadata_ == NULL) {
       perror("Reading metadata from file to struct failed");
       destruct_args();
       destruct();
-      free(metadata_);
       exit(EXIT_FAILURE);
     }
     for (i = 0; i < args_->no_of_files; i++) {
@@ -279,7 +282,6 @@ void extract_archive() {
       }
     }
   }
-  free(metadata_);
   fclose(archive_fp);
 }
 
