@@ -28,6 +28,8 @@ static int is_directory_or_file(char *);
 static void add_to_archive(metadata **, char *);
 static void populate_archive(int, char *);
 static void add_file_stat(char *, metadata **);
+static void extract_file(metadata *);
+static void destruct_all(char *);
 
 // ADAPTED FROM STACK OVERFLOW -
 // https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
@@ -140,6 +142,13 @@ extern void destruct_args() {
     free(args_);
 }
 
+void destruct_all(char *message) {
+  perror(message);
+  destruct_args();
+  destruct_struct();
+  exit(EXIT_FAILURE);
+}
+
 extern void create_archive() {
   FILE *archive_fp;
   list *list_current;
@@ -148,11 +157,9 @@ extern void create_archive() {
   int i;
 
   // OPEN DIRECTORY AND ARCHIVE
-  archive_fp = fopen(args_->adtar_file, "w");
+  archive_fp = fopen(args_->adtar_file, "wb");
   if (archive_fp == NULL) {
-    perror("Open <adtar_file> failed");
-    destruct_args();
-    exit(EXIT_FAILURE);
+    destruct_all("Open <adtar_file> failed");
   }
   fwrite(&location, sizeof(metadata_offset), 1, archive_fp);
   fclose(archive_fp);
@@ -177,35 +184,27 @@ extern void create_archive() {
   }
 
   if ((archive_fp = fopen(args_->adtar_file, "ab")) == NULL) {
-    perror("open adtar file failed");
-    destruct_args();
-    destruct();
-    exit(EXIT_FAILURE);
+    destruct_all("open adtar file failed");
   }
 
   location.offset = ftell(archive_fp);
   list_current = head;
+
   do {
     print_metadata(1, &list_current->metadata_);
-    if (fwrite(list_current, sizeof(metadata), 1, archive_fp) != 1) {
-      perror("Write Metadata to file error");
-      destruct_args();
-      destruct();
-      exit(EXIT_FAILURE);
+    if (fwrite(list_current->metadata_, sizeof(metadata), 1, archive_fp) != 1) {
+      destruct_all("Write Metadata to file error");
     }
   } while ((list_current = get_next(&list_current)) != NULL);
-  destruct();
-  fclose(archive_fp);
-
-  if ((archive_fp = fopen(args_->adtar_file, "r+")) == NULL) {
-    perror("Open adtar file failed");
-    destruct_args();
-    destruct();
-    exit(EXIT_FAILURE);
-  }
-  fwrite(&location, sizeof(metadata_offset), 1, archive_fp);
+  destruct_struct();
   VLOG(DEBUG, "Location set to %ld and eof at %ld", location.offset,
        ftell(archive_fp));
+  fclose(archive_fp);
+
+  if ((archive_fp = fopen(args_->adtar_file, "rb+")) == NULL) {
+  }
+
+  fwrite(&location, sizeof(metadata_offset), 1, archive_fp);
   fclose(archive_fp);
 }
 
@@ -217,11 +216,8 @@ void populate_archive(int dir_flag, char *path) {
   switch (dir_flag) {
   case DIR_:
     if ((dir = opendir(path)) == NULL) {
-      perror("Open <file/directory list> failed");
-      destruct_args();
-      destruct();
       free(metadata_);
-      exit(EXIT_FAILURE);
+      destruct_all("Open <file/directory list> failed");
     }
     // Iterate through directory and its files
     while ((dirp = readdir(dir)) != NULL) {
@@ -238,50 +234,74 @@ void extract_archive() {
   FILE *archive_fp;
   list *list_current;
   char buffer[512];
-
   metadata *metadata_;
   metadata_offset location;
   int version = 0;
   int i;
 
   // OPEN DIRECTORY AND ARCHIVE
-  if ((archive_fp = fopen(args_->adtar_file, "r")) == NULL) {
-    perror("Open <adtar_file> failed");
-    destruct_args();
-    destruct();
-    free(metadata_);
-    exit(EXIT_FAILURE);
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("Open <adtar_file> failed");
   }
   if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
     perror("Reading offset from <adtar_file> failed");
     return;
   }
+  fclose(archive_fp);
 
-  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
-    perror("fseek to metadata location on extract_archive error");
-    destruct_args();
-    destruct();
-    free(metadata_);
-    exit(EXIT_FAILURE);
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("Open <adtar_file> failed");
   }
 
-  VLOG(DEBUG, "File to set %ld", location.offset);
+  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+    destruct_all("fseek to metadata location on extract_archive error");
+  }
+  VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
+       ftell(archive_fp));
+
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
     metadata_ = (metadata *)buffer;
     if (metadata_ == NULL) {
-      perror("Reading metadata from file to struct failed");
-      destruct_args();
-      destruct();
-      exit(EXIT_FAILURE);
+      destruct_all("Reading metadata from file to struct failed");
     }
+    print_metadata(1, &metadata_);
     for (i = 0; i < args_->no_of_files; i++) {
-      VLOG(DEBUG, "in loop %s == %s", metadata_->name,
-           args_->file_list[i].name);
       if (strcmp(metadata_->name, args_->file_list[i].name) == 0) {
         VLOG(DEBUG, "extracting file %s", metadata_->name);
+        extract_file(metadata_);
       }
     }
   }
+  fclose(archive_fp);
+}
+
+void extract_file(metadata *metadata_) {
+  FILE *file;
+  FILE *archive_fp;
+  int i;
+  char buffer[512];
+
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("extract file failed to read <adtar-file>");
+  }
+  if ((file = fopen(metadata_->name, "ab")) == NULL) {
+    destruct_all("extract file failed to read file");
+  }
+
+  if (fseek(file, metadata_->offset, SEEK_SET) < 0) {
+    destruct_all("Fseek to file offset in extract file failed");
+  }
+  VLOG(DEBUG, "--------------------");
+  for (i = 0; i < metadata_->file_size; i++) {
+    if (fread(buffer, sizeof(char), 1, archive_fp) > 0) {
+      if (fwrite(buffer, sizeof(char), 1, file) != 1) {
+        fclose(file);
+        fclose(archive_fp);
+        destruct_all("Write to file from <adtar-file> extraction failed");
+      }
+    }
+  }
+  fclose(file);
   fclose(archive_fp);
 }
 
@@ -294,7 +314,7 @@ void add_file_stat(char *path, metadata **metadata__) {
   if (stat(path, &file_stat)) {
     perror("Failed to get file stats");
     destruct_args();
-    destruct();
+    destruct_struct();
     exit(EXIT_FAILURE);
   }
   metadata_->type = is_directory_or_file(path);
@@ -315,18 +335,12 @@ void add_to_archive(metadata **metadata_, char *path) {
   int size = 0;
 
   if ((fp_add = fopen(path, "rb")) == NULL) {
-    perror("Failed to open file");
-    destruct_args();
-    destruct();
-    return;
+    destruct_all("Failed to open file");
   }
 
   if ((archive_fp = fopen(args_->adtar_file, "ab")) == NULL) {
-    perror("Failed to archive file");
     fclose(fp_add);
-    destruct_args();
-    destruct();
-    return;
+    destruct_all("Failed to archive file");
   }
 
   metadata__->offset = ftell(archive_fp);

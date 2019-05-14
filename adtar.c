@@ -38,7 +38,6 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Bad Argument Found\n");
   }
 
-  free(args_->file_list);
-  free(args_);
+  destruct_args();
   return EXIT_SUCCESS;
 }

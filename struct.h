@@ -24,6 +24,6 @@ extern list *get_next(list **);
 extern int next_is_empty(list **);
 extern metadata *get_metadata(list **);
 extern void print_metadata(int, metadata **);
-extern void destruct();
+extern void destruct_struct();
 
 #endif // STRUCT_H_

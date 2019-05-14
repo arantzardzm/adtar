@@ -86,7 +86,7 @@ int next_is_empty(list **this) {
   return (this_->next == NULL);
 }
 
-void destruct() {
+void destruct_struct() {
   if (head == NULL)
     return;
   list *this_ = head;
