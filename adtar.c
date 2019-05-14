@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     extract_archive();
     break;
   case M:
-
+    display_metadata();
     break;
   case P:
     display_hierarchy();
