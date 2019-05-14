@@ -445,37 +445,37 @@ void print_path(char *path_name, int level, int type){
     }
 }
 
-void display_hierarchy(){
-    FILE *archive_fp;
-    char buffer[512];
-    metadata_offset location;
-    metadata *metadata_;
+void display_hierarchy() {
+  FILE *archive_fp;
+  char buffer[512];
+  metadata_offset location;
+  metadata *metadata_;
 
-    if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL){
-        destruct_all("display hierarchy failed to read <adtar-file>");
-    }
-    if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
-        destruct_all("Reading offset in display hierarchy from <adtar_file> failed");
-        return;
-    }
-    fclose(archive_fp);
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("display hierarchy failed to read <adtar-file>");
+  }
+  if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
+    destruct_all(
+        "Reading offset in display hierarchy from <adtar_file> failed");
+    return;
+  }
+  fclose(archive_fp);
 
-    if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
-        destruct_all("display hierarchy failed to read <adtar_file> failed");
-    }
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("display hierarchy failed to read <adtar_file> failed");
+  }
 
-    if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
-        destruct_all("fseek to metadata location on extract_archive error");
-    }
+  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+    destruct_all("fseek to metadata location on extract_archive error");
+  }
 
-    printf("\n");
-    while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
-        metadata_ = (metadata *)buffer;
-        if (metadata_ == NULL) {
-          destruct_all("Reading metadata from file to struct failed");
-        }
-        print_path(metadata_->name, 0, metadata_->type);
-    }
-    printf("\n");
-    fclose(archive_fp);
+  while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+      metadata_ = (metadata *)buffer;
+      if (metadata_ == NULL) {
+        destruct_all("Reading metadata from file to struct failed");
+      }
+      print_path(metadata_->name, 0, metadata_->type);
+  }
+  printf("\n");
+  fclose(archive_fp);
 }
