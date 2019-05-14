@@ -25,6 +25,8 @@ typedef struct {
   char *adtar_file;
 } args;
 
+extern const char *modes[];
+
 extern void parse_args(int, char **);
 extern void create_archive();
 extern void append_archive();
