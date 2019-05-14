@@ -11,6 +11,7 @@ adtar: $(obj)
 adtar: common.h func.h struct.h
 
 copy:
+	mkdir -p obj
 	cp adtar $(BUILDIR)
 	cp $(obj) $(BUILDIR)
 	rm -f $(obj) adtar
