@@ -8,7 +8,6 @@ args *args_;
 
 int main(int argc, char **argv) {
   // DECLARE VARS
-  int i;
 
   // CHECK INVOCATION
   parse_args(argc, argv);

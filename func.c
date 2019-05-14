@@ -195,7 +195,7 @@ extern void create_archive() {
   }
   fwrite(&location, sizeof(metadata_offset), 1, archive_fp);
   fclose(archive_fp);
-  VLOG(DEBUG, "Created file at ~/%s", args_->adtar_file);
+  // VLOG(DEBUG, "Created file at ~/%s", args_->adtar_file);
 
   for (i = 0; i < args_->no_of_files; i++) {
     char *path = args_->file_list[i].name;
@@ -223,15 +223,15 @@ extern void create_archive() {
   list_current = head;
 
   do {
-    VLOG(DEBUG, "------------------------");
+    // VLOG(DEBUG, "------------------------");
     print_metadata(1, &list_current->metadata_);
     if (fwrite(list_current->metadata_, sizeof(metadata), 1, archive_fp) != 1) {
       destruct_all("Write Metadata to file error");
     }
   } while ((list_current = get_next(&list_current)) != NULL);
   destruct_struct();
-  VLOG(DEBUG, "Location set to %ld and eof at %ld", location.offset,
-       ftell(archive_fp));
+  // VLOG(DEBUG, "Location set to %ld and eof at %ld", location.offset,
+       // ftell(archive_fp));
   fclose(archive_fp);
 
   if ((archive_fp = fopen(args_->adtar_file, "rb+")) == NULL) {
@@ -245,7 +245,7 @@ void populate_archive(int dir_flag, char *path) {
   DIR *dir;
   struct dirent *dirp;
   metadata *metadata_ = malloc(sizeof(metadata));
-  VLOG(DEBUG, "populating archive with file %s", path);
+  // VLOG(DEBUG, "populating archive with file %s", path);
 
   switch (dir_flag) {
   case DIR_:
@@ -286,10 +286,10 @@ void populate_archive(int dir_flag, char *path) {
 
 void append_archive() {
   FILE *archive_fp;
-  list *list_current;
+  // list *list_current;
   char buffer[512];
   metadata_offset location;
-  int i;
+  // int i;
 
   // OPEN DIRECTORY AND ARCHIVE
   if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
@@ -308,8 +308,8 @@ void append_archive() {
   if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
     destruct_all("fseek to metadata location on extract_archive error");
   }
-  VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
-       ftell(archive_fp));
+  // VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
+       // ftell(archive_fp));
 
   // READ DIRS & CREATE FOLDERS
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
@@ -336,11 +336,11 @@ void append_archive() {
 
 void extract_archive() {
   FILE *archive_fp;
-  list *list_current;
+  // list *list_current;
   char buffer[512];
   metadata *metadata_;
   metadata_offset location;
-  int i;
+  // int i;
 
   // OPEN DIRECTORY AND ARCHIVE
   if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
@@ -359,8 +359,8 @@ void extract_archive() {
   if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
     destruct_all("fseek to metadata location on extract_archive error");
   }
-  VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
-       ftell(archive_fp));
+  // VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
+       // ftell(archive_fp));
 
   // READ DIRS & CREATE FOLDERS
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
@@ -374,8 +374,8 @@ void extract_archive() {
         // fprintf(stderr, "Failed to create directory %s", metadata_->name);
         // destruct_all(" ");
       }
-      VLOG(DEBUG, "creating folder %s", metadata_->name);
-      VLOG(DEBUG, "------------------------");
+      // VLOG(DEBUG, "creating folder %s", metadata_->name);
+      // VLOG(DEBUG, "------------------------");
     }
   }
   fclose(archive_fp);
@@ -400,23 +400,23 @@ void extract_archive() {
       // check occurence passed
       if (metadata_->max_version >= args_->occurence) {
         if (metadata_->version == args_->occurence) {
-          VLOG(DEBUG, "extracting file %s with version %d", metadata_->name,
-               metadata_->version);
-          VLOG(DEBUG, "------------------------");
+          // VLOG(DEBUG, "extracting file %s with version %d", metadata_->name,
+          //      metadata_->version);
+          // VLOG(DEBUG, "------------------------");
           extract_file(metadata_);
         } else {
-          VLOG(DEBUG,
-               "searching for higher version number for file %s with version "
-               "%d, need version %d",
-               metadata_->name, metadata_->version, args_->occurence);
+          // VLOG(DEBUG,
+          //      "searching for higher version number for file %s with version "
+          //      "%d, need version %d",
+          //      metadata_->name, metadata_->version, args_->occurence);
         }
       } else {
         if (metadata_->version == 0) {
-          VLOG(DEBUG,
-               "extracting file %s with version %d, version is greater than "
-               "max version %d",
-               metadata_->name, metadata_->version, metadata_->max_version);
-          VLOG(DEBUG, "------------------------");
+          // VLOG(DEBUG,
+          //      "extracting file %s with version %d, version is greater than "
+          //      "max version %d",
+          //      metadata_->name, metadata_->version, metadata_->max_version);
+          // VLOG(DEBUG, "------------------------");
           extract_file(metadata_);
         }
       }
@@ -440,7 +440,7 @@ void extract_file(metadata *metadata_) {
   if (fseek(archive_fp, metadata_->offset, SEEK_SET) < 0) {
     destruct_all("Fseek to file offset in extract file failed");
   }
-  VLOG(DEBUG, "--------------------");
+  // VLOG(DEBUG, "--------------------");
   for (i = 0; i < metadata_->file_size; i++) {
     if (fread(buffer, sizeof(char), 1, archive_fp) > 0) {
       if (fwrite(buffer, sizeof(char), 1, file) != 1) {
