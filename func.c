@@ -2,10 +2,12 @@
 #include "func.h"
 #include "struct.h"
 #include <dirent.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #define C 0
@@ -16,14 +18,14 @@
 #define DIR_ 1
 #define FILE_ 2
 
-list *head;
-list *list_current;
+extern list *head;
 
 // HELPER FUNCS
 static int check_ext(char *);
 static int is_directory_or_file(char *);
 static void add_to_archive(metadata **, char *, char *);
 static void populate_archive(int, char *, char *);
+static void add_file_stat(char *, metadata **);
 
 // ADAPTED FROM STACK OVERFLOW -
 // https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
@@ -129,7 +131,7 @@ extern args *parse_args(int argc, char **argv) {
 extern void create_archive(char *adtar_file, file_name *file_list,
                            int no_of_files, int occurence) {
   FILE *archive_fp;
-  list *archive_head;
+  list *list_current;
   long location = -1;
   int version = 0;
   int i;
@@ -144,8 +146,6 @@ extern void create_archive(char *adtar_file, file_name *file_list,
   fclose(archive_fp);
   VLOG(DEBUG, "Created file at ~/%s", adtar_file);
 
-  head = list_current;
-
   for (i = 0; i < no_of_files; i++) {
     char *path = file_list[i].name;
     switch (is_directory_or_file(path)) {
@@ -157,23 +157,28 @@ extern void create_archive(char *adtar_file, file_name *file_list,
       populate_archive(FILE_, path, adtar_file);
       break;
     default:
-      VLOG(DEBUG, "What is this %s", path);
+      perror("Encountered a non-file and non-directory");
     }
   }
+  if (head == NULL) {
+    VLOG(DEBUG, "head is NULL")
+    return;
+  }
+
   if ((archive_fp = fopen(adtar_file, "ab")) == NULL) {
     perror("open adtar file failed");
     exit(EXIT_FAILURE);
   }
 
   location = ftell(archive_fp);
+  list_current = head;
   do {
     if (fwrite(list_current, sizeof(metadata), 1, archive_fp) != 1) {
       perror("Write Metadata to file error");
       exit(EXIT_FAILURE);
     }
   } while ((list_current = get_next(&list_current)) != NULL);
-  free(list_current);
-  free(head);
+  destruct();
   fclose(archive_fp);
 
   if ((archive_fp = fopen(adtar_file, "r+")) == NULL) {
@@ -200,12 +205,30 @@ void populate_archive(int dir_flag, char *path, char *adtar_file) {
     }
     break;
   case FILE_:
-    get_file_stat(path, &metadata_);
-    strncat(metadata_->name, full_path, 200);
-    metadata_->name[199] = '\0';
+    add_file_stat(path, &metadata_);
     add_to_archive(&metadata_, full_path, adtar_file);
     break;
   }
+}
+
+void add_file_stat(char *path, metadata **metadata__) {
+  metadata *metadata_ = *metadata__;
+
+  struct stat file_stat;
+  metadata_->offset = 0;
+
+  if (stat(path, &file_stat)) {
+    perror("Failed to get file stats");
+    exit(EXIT_FAILURE);
+  }
+  metadata_->type = is_directory_or_file(path);
+  snprintf(metadata_->name, 200, "%s", path);
+  snprintf(metadata_->last_modified, 13, "%s", ctime(&file_stat.st_mtime) + 4);
+  snprintf(metadata_->name, 200, "%s", path);
+  metadata_->uid = file_stat.st_uid;
+  metadata_->gid = file_stat.st_gid;
+  metadata_->file_size = file_stat.st_size;
+  metadata_->perms = file_stat.st_mode;
 }
 
 void add_to_archive(metadata **metadata_, char *path, char *archive_file) {
@@ -226,7 +249,8 @@ void add_to_archive(metadata **metadata_, char *path, char *archive_file) {
   }
 
   metadata__->offset = ftell(archive_fp);
-  add(&list_current, &metadata__);
+  VLOG(DEBUG, "HERE");
+  add(&metadata__);
 
   while ((size = fread(buffer, sizeof(char), sizeof(buffer), fp_add)) > 0) {
     if (fwrite(buffer, sizeof(char), size, archive_fp) != size) {

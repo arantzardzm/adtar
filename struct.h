@@ -11,7 +11,7 @@ typedef struct {
   int file_size;          // file size
   char last_modified[13]; // time of last modification
   mode_t perms;           // permission
-  char type;              // file type
+  int type;               // file type
   int compressed;         // compressed file
 } metadata;
 
@@ -20,10 +20,11 @@ typedef struct {
   struct list *next;
 } list;
 
-extern void add(list **, metadata **);
-extern struct list *get_next(list **);
+extern void add(metadata **);
+extern list *get_next(list **);
 extern int next_is_empty(list **);
 extern metadata *get_metadata(list **);
-extern void destruct(list **);
+extern void print_metadata(int, metadata **);
+extern void destruct();
 
 #endif // STRUCT_H_

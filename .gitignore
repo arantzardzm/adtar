@@ -4,6 +4,7 @@ a.out
 test.c
 test_dir
 .DS_Store
+test.ad
 
 # Byte
 -compiled / optimized / DLL files

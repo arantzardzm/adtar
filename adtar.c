@@ -3,6 +3,8 @@
 #include "struct.h"
 #include <stdlib.h>
 
+list *head;
+
 int main(int argc, char **argv) {
   // DECLARE VARS
   args *args_;
