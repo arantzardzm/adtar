@@ -12,7 +12,8 @@ typedef struct {
   char last_modified[13]; // time of last modification
   mode_t perms;           // permission
   int type;               // file type
-  // int version;            // store version
+  int version;            // store version
+  int max_version;        // store max version that exist in full list
 } metadata;
 
 typedef struct {

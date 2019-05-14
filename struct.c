@@ -87,6 +87,7 @@ int next_is_empty(list **this) {
 }
 
 void destruct_struct() {
+  VLOG(DEBUG, "destructing");
   if (head == NULL)
     return;
   list *this_ = head;
@@ -97,6 +98,7 @@ void destruct_struct() {
     free(temp->metadata_);
     free(temp);
   }
+  VLOG(DEBUG, "out");
   free(this_->metadata_);
   free(this_);
 }

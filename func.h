@@ -25,9 +25,14 @@ typedef struct {
   char *adtar_file;
 } args;
 
+extern const char *modes[];
+
 extern void parse_args(int, char **);
 extern void create_archive();
+extern void append_archive();
 extern void extract_archive();
 extern void destruct_args();
+extern void display_metadata();
+extern void display_hierarchy();
 
 #endif // FUNC_H_

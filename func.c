@@ -22,14 +22,16 @@
 
 extern list *head;
 extern args *args_;
+const char *modes[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
 
 // HELPER FUNCS
 static int check_ext(char *);
 static int is_directory_or_file(char *);
 static void add_to_archive(metadata **, char *);
 static void populate_archive(int, char *);
-static void add_file_stat(char *, metadata **);
+static void add_file_stat(char *, metadata **, int, int);
 static void extract_file(metadata *);
+static void print_path(char *, int, int);
 static void destruct_all(char *);
 
 // ADAPTED FROM STACK OVERFLOW -
@@ -61,8 +63,9 @@ extern void parse_args(int argc, char **argv) {
   args_ = args__;
   args_->occurence = 0;
   args_->no_of_files = 0;
+  args_->file_list = NULL;
 
-  if (argc < 4) {
+  if (argc < 3) {
     fprintf(
         stderr, "%s\n%s\n",
         "Invokation Error: Please enter your input in the following format:",
@@ -102,7 +105,24 @@ extern void parse_args(int argc, char **argv) {
     }
   }
 
-  if (args_->occurence > 0) {
+  if (args_->flag == X || args_->flag == M || args_->flag == P) {
+    file_start = 0;
+    if (args_->occurence > 0) {
+      if (argc < 5) {
+        fprintf(
+            stderr, "%s\n%s\n",
+            "Invokation Error: Please enter your input in the following "
+            "format:",
+            "./adtar {-c|-a|-x|-m|-p|-o NUMBER} <archive-file> <file/directory "
+            "list>");
+        destruct_args();
+        exit(EXIT_FAILURE);
+      }
+      args_->adtar_file = argv[4];
+    } else {
+      args_->adtar_file = argv[2];
+    }
+  } else if (args_->occurence > 0) {
     if (argc < 6) {
       fprintf(
           stderr, "%s\n%s\n",
@@ -115,17 +135,28 @@ extern void parse_args(int argc, char **argv) {
     args_->adtar_file = argv[4];
     file_start = 5;
   } else {
+    if (argc < 4) {
+      fprintf(
+          stderr, "%s\n%s\n",
+          "Invokation Error: Please enter your input in the following format:",
+          "./adtar {-c|-a|-x|-m|-p|-o NUMBER} <archive-file> <file/directory "
+          "list>");
+      destruct_args();
+      exit(EXIT_FAILURE);
+    }
     args_->adtar_file = argv[2];
     file_start = 3;
   }
-  args_->file_list = malloc(sizeof(file_name) * (argc - file_start));
-  i = 0;
-  while (file_start < argc) {
-    strncpy(args_->file_list[i].name, argv[file_start], 200);
-    args_->file_list[file_start].name[199] = '\0';
-    args_->no_of_files++;
-    file_start++;
-    i++;
+  if (file_start >= 3) {
+    args_->file_list = malloc(sizeof(file_name) * (argc - file_start));
+    i = 0;
+    while (file_start < argc) {
+      strncpy(args_->file_list[i].name, argv[file_start], 200);
+      args_->file_list[file_start].name[199] = '\0';
+      args_->no_of_files++;
+      file_start++;
+      i++;
+    }
   }
 
   if (!check_ext(args_->adtar_file)) {
@@ -154,7 +185,6 @@ extern void create_archive() {
   FILE *archive_fp;
   list *list_current;
   metadata_offset location = {location.offset = -1};
-  int version = 0;
   int i;
 
   // OPEN DIRECTORY AND ARCHIVE
@@ -193,6 +223,7 @@ extern void create_archive() {
 
   do {
     VLOG(DEBUG, "------------------------");
+    print_metadata(1, &list_current->metadata_);
     if (fwrite(list_current->metadata_, sizeof(metadata), 1, archive_fp) != 1) {
       destruct_all("Write Metadata to file error");
     }
@@ -222,7 +253,7 @@ void populate_archive(int dir_flag, char *path) {
       destruct_all("Open <file/directory list> failed");
     }
     // ADD original DIR
-    add_file_stat(path, &metadata_);
+    add_file_stat(path, &metadata_, 0, 0);
     add(&metadata_);
     // Iterate through directory and its files
     while ((dirp = readdir(dir)) != NULL) {
@@ -246,10 +277,60 @@ void populate_archive(int dir_flag, char *path) {
     }
     break;
   case FILE_:
-    add_file_stat(path, &metadata_);
+    add_file_stat(path, &metadata_, 0, 0);
     add_to_archive(&metadata_, path);
     break;
   }
+}
+
+void append_archive() {
+  FILE *archive_fp;
+  list *list_current;
+  char buffer[512];
+  metadata_offset location;
+  int i;
+
+  // OPEN DIRECTORY AND ARCHIVE
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("Open <adtar_file> failed");
+  }
+  if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
+    perror("Reading offset from <adtar_file> failed");
+    return;
+  }
+  fclose(archive_fp);
+
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("Open <adtar_file> failed");
+  }
+
+  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+    destruct_all("fseek to metadata location on extract_archive error");
+  }
+  VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
+       ftell(archive_fp));
+
+  // READ DIRS & CREATE FOLDERS
+  while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+    metadata *temp;
+    metadata *metadata_ = malloc(sizeof(metadata));
+    temp = (metadata *)buffer;
+    memcpy(metadata_, temp, sizeof(metadata));
+    if (metadata_ == NULL) {
+      fclose(archive_fp);
+      destruct_all("Reading metadata from <adtar-file> to struct failed");
+    }
+    add(&metadata_);
+  }
+
+  // REMOVE METADATA FROM FILE
+  if (truncate(args_->adtar_file, location.offset) != 0) {
+    perror("truncate error");
+    exit(EXIT_FAILURE);
+  }
+  fclose(archive_fp);
+
+  create_archive();
 }
 
 void extract_archive() {
@@ -258,7 +339,6 @@ void extract_archive() {
   char buffer[512];
   metadata *metadata_;
   metadata_offset location;
-  int version = 0;
   int i;
 
   // OPEN DIRECTORY AND ARCHIVE
@@ -289,12 +369,12 @@ void extract_archive() {
       destruct_all("Reading metadata from file to struct failed");
     }
     if (metadata_->type == DIR_) {
+      if (mkdir(metadata_->name, metadata_->perms) == -1) {
+        fprintf(stderr, "Failed to create directory %s", metadata_->name);
+        destruct_all(" ");
+      }
       VLOG(DEBUG, "creating folder %s", metadata_->name);
       VLOG(DEBUG, "------------------------");
-      if (mkdir(metadata_->name, metadata_->perms) == -1) {
-        fprintf(stderr, "Failed to create directory %s: %s\n", metadata_->name,
-                strerror(errno));
-      }
     }
   }
   fclose(archive_fp);
@@ -316,9 +396,29 @@ void extract_archive() {
       destruct_all("Reading metadata from file to struct failed");
     }
     if (metadata_->type == FILE_) {
-      VLOG(DEBUG, "extracting file %s", metadata_->name);
-      VLOG(DEBUG, "------------------------");
-      extract_file(metadata_);
+      // check occurence passed
+      if (metadata_->max_version >= args_->occurence) {
+        if (metadata_->version == args_->occurence) {
+          VLOG(DEBUG, "extracting file %s with version %d", metadata_->name,
+               metadata_->version);
+          VLOG(DEBUG, "------------------------");
+          extract_file(metadata_);
+        } else {
+          VLOG(DEBUG,
+               "searching for higher version number for file %s with version "
+               "%d, need version %d",
+               metadata_->name, metadata_->version, args_->occurence);
+        }
+      } else {
+        if (metadata_->version == 0) {
+          VLOG(DEBUG,
+               "extracting file %s with version %d, version is greater than "
+               "max version %d",
+               metadata_->name, metadata_->version, metadata_->max_version);
+          VLOG(DEBUG, "------------------------");
+          extract_file(metadata_);
+        }
+      }
     }
   }
   fclose(archive_fp);
@@ -336,7 +436,6 @@ void extract_file(metadata *metadata_) {
   if ((file = fopen(metadata_->name, "wb")) == NULL) {
     destruct_all("extract file failed to read file");
   }
-
   if (fseek(archive_fp, metadata_->offset, SEEK_SET) < 0) {
     destruct_all("Fseek to file offset in extract file failed");
   }
@@ -354,7 +453,8 @@ void extract_file(metadata *metadata_) {
   fclose(archive_fp);
 }
 
-void add_file_stat(char *path, metadata **metadata__) {
+void add_file_stat(char *path, metadata **metadata__, int version,
+                   int max_version) {
   metadata *metadata_ = *metadata__;
 
   struct stat file_stat;
@@ -374,7 +474,8 @@ void add_file_stat(char *path, metadata **metadata__) {
   metadata_->gid = file_stat.st_gid;
   metadata_->file_size = file_stat.st_size;
   metadata_->perms = file_stat.st_mode;
-  // metadata_->version = meta
+  metadata_->version = version;
+  metadata_->max_version = max_version;
 }
 
 void add_to_archive(metadata **metadata_, char *path) {
@@ -404,5 +505,121 @@ void add_to_archive(metadata **metadata_, char *path) {
   }
 
   fclose(fp_add);
+  fclose(archive_fp);
+}
+
+void display_metadata() {
+  int i, j;
+  FILE *archive_fp;
+  char buffer[512];
+  metadata_offset location;
+  metadata *metadata_;
+  char permissions[10];
+
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("print metadata failed to read <adtar-file>");
+  }
+  if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
+    destruct_all("Reading offset in print metadata from <adtar_file> failed");
+    return;
+  }
+  fclose(archive_fp);
+
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("print metadata failed to read <adtar_file> failed");
+  }
+
+  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+    destruct_all("fseek to metadata location on print metadata error");
+  }
+
+  while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+    metadata_ = (metadata *)buffer;
+    if (metadata_ == NULL) {
+      destruct_all("Reading metadata from file to struct failed");
+    }
+
+    *permissions = '\0';
+    // setting read, write, and execute permissions
+    for (i = 2; i >= 0; i--) {
+      j = (metadata_->perms >> (i * 3)) & 07;
+      strcat(permissions, modes[j]);
+    }
+    // print permissions
+    printf("%d %s %d %d% 6d %s %s\n", metadata_->type, permissions,
+           metadata_->uid, metadata_->gid, metadata_->file_size,
+           metadata_->last_modified, metadata_->name);
+  }
+  printf("\n");
+  fclose(archive_fp);
+}
+
+void print_path(char *path_name, int level, int type) {
+  int i;
+  char name[256];
+  char new_name[256];
+  char *pos = strchr(path_name, '/');
+
+  if (pos != NULL) {
+    strncpy(name, path_name, (pos - path_name) + 1);
+    name[(pos - path_name) + 1] = '\0';
+    memmove(new_name, path_name + (pos - path_name) + 1,
+            (strlen(path_name) - strlen(name)) + 1);
+    name[(pos - path_name) + 1] = '\0';
+    print_path(new_name, level + 1, type);
+
+  } else {
+    if (level > 0) {
+      printf(" |");
+    }
+    for (i = 0; i < level; i++) {
+      printf("--");
+    }
+    // Directories
+    if (type == DIR_) {
+      strncpy(name, path_name, strlen(path_name));
+      name[strlen(path_name)] = '/';
+      name[strlen(path_name) + 1] = '\0';
+      printf("%s\n", name);
+    } else
+        // Files
+        if (type == FILE_) {
+      printf("%s\n", path_name);
+    }
+  }
+}
+
+void display_hierarchy() {
+  FILE *archive_fp;
+  char buffer[512];
+  metadata_offset location;
+  metadata *metadata_;
+
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("display hierarchy failed to read <adtar-file>");
+  }
+  if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
+    destruct_all(
+        "Reading offset in display hierarchy from <adtar_file> failed");
+    return;
+  }
+  fclose(archive_fp);
+
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("display hierarchy failed to read <adtar_file> failed");
+  }
+
+  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+    destruct_all("fseek to metadata location on display hierarchy error");
+  }
+
+  while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+    metadata_ = (metadata *)buffer;
+    if (metadata_ == NULL) {
+      destruct_all("Reading metadata from file to struct failed");
+    }
+    print_path(metadata_->name, 0, metadata_->type);
+  }
+  printf("\n");
   fclose(archive_fp);
 }
