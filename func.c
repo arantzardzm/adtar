@@ -28,7 +28,7 @@ static int check_ext(char *);
 static int is_directory_or_file(char *);
 static void add_to_archive(metadata **, char *);
 static void populate_archive(int, char *);
-static void add_file_stat(char *, metadata **);
+static void add_file_stat(char *, metadata **, int, int);
 static void extract_file(metadata *);
 static void print_path(char *, int, int);
 static void destruct_all(char *);
@@ -223,7 +223,7 @@ void populate_archive(int dir_flag, char *path) {
       destruct_all("Open <file/directory list> failed");
     }
     // ADD original DIR
-    add_file_stat(path, &metadata_);
+    add_file_stat(path, &metadata_, 0, 0);
     add(&metadata_);
     // Iterate through directory and its files
     while ((dirp = readdir(dir)) != NULL) {
@@ -247,7 +247,7 @@ void populate_archive(int dir_flag, char *path) {
     }
     break;
   case FILE_:
-    add_file_stat(path, &metadata_);
+    add_file_stat(path, &metadata_, 0, 0);
     add_to_archive(&metadata_, path);
     break;
   }
@@ -317,9 +317,29 @@ void extract_archive() {
       destruct_all("Reading metadata from file to struct failed");
     }
     if (metadata_->type == FILE_) {
-      VLOG(DEBUG, "extracting file %s", metadata_->name);
-      VLOG(DEBUG, "------------------------");
-      extract_file(metadata_);
+      // check occurence passed
+      if (metadata_->max_version >= args_->occurence) {
+        if (metadata_->version == args_->occurence) {
+          VLOG(DEBUG, "extracting file %s with version %d", metadata_->name,
+               metadata_->version);
+          VLOG(DEBUG, "------------------------");
+          extract_file(metadata_);
+        } else {
+          VLOG(DEBUG,
+               "searching for higher version number for file %s with version "
+               "%d, need version %d",
+               metadata_->name, metadata_->version, args_->occurence);
+        }
+      } else {
+        if (metadata_->version == 0) {
+          VLOG(DEBUG,
+               "extracting file %s with version %d, version is greater than "
+               "max version %d",
+               metadata_->name, metadata_->version, metadata_->max_version);
+          VLOG(DEBUG, "------------------------");
+          extract_file(metadata_);
+        }
+      }
     }
   }
   fclose(archive_fp);
@@ -354,7 +374,8 @@ void extract_file(metadata *metadata_) {
   fclose(archive_fp);
 }
 
-void add_file_stat(char *path, metadata **metadata__) {
+void add_file_stat(char *path, metadata **metadata__, int version,
+                   int max_version) {
   metadata *metadata_ = *metadata__;
 
   struct stat file_stat;
@@ -374,7 +395,8 @@ void add_file_stat(char *path, metadata **metadata__) {
   metadata_->gid = file_stat.st_gid;
   metadata_->file_size = file_stat.st_size;
   metadata_->perms = file_stat.st_mode;
-  // metadata_->version = meta
+  metadata_->version = version;
+  metadata_->max_version = max_version;
 }
 
 void add_to_archive(metadata **metadata_, char *path) {
