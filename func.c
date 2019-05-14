@@ -48,9 +48,9 @@ int check_ext(char *filename) {
 int is_directory_or_file(char *dir) {
   struct stat fileInfo;
   stat(dir, &fileInfo);
-  if (S_ISDIR(fileInfo.st_mode)) {  // directory
+  if (S_ISDIR(fileInfo.st_mode)) { // directory
     return DIR_;
-} else if (S_ISREG(fileInfo.st_mode)) {  // file
+  } else if (S_ISREG(fileInfo.st_mode)) { // file
     return FILE_;
   } else {
     return 0; // compressed
@@ -195,6 +195,7 @@ extern void create_archive() {
   }
   fwrite(&location, sizeof(metadata_offset), 1, archive_fp);
   fclose(archive_fp);
+  printf("Created adtar file at ./%s\n", args_->adtar_file);
   // VLOG(DEBUG, "Created file at ~/%s", args_->adtar_file);
 
   for (i = 0; i < args_->no_of_files; i++) {
@@ -224,14 +225,14 @@ extern void create_archive() {
 
   do {
     // VLOG(DEBUG, "------------------------");
-    print_metadata(1, &list_current->metadata_);
+    printf("Writing file %s to adtar-file\n", list_current->metadata_->name);
     if (fwrite(list_current->metadata_, sizeof(metadata), 1, archive_fp) != 1) {
       destruct_all("Write Metadata to file error");
     }
   } while ((list_current = get_next(&list_current)) != NULL);
   destruct_struct();
   // VLOG(DEBUG, "Location set to %ld and eof at %ld", location.offset,
-       // ftell(archive_fp));
+  // ftell(archive_fp));
   fclose(archive_fp);
 
   if ((archive_fp = fopen(args_->adtar_file, "rb+")) == NULL) {
@@ -309,7 +310,7 @@ void append_archive() {
     destruct_all("fseek to metadata location on extract_archive error");
   }
   // VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
-       // ftell(archive_fp));
+  // ftell(archive_fp));
 
   // READ DIRS & CREATE FOLDERS
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
@@ -359,8 +360,6 @@ void extract_archive() {
   if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
     destruct_all("fseek to metadata location on extract_archive error");
   }
-  // VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
-       // ftell(archive_fp));
 
   // READ DIRS & CREATE FOLDERS
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
@@ -371,11 +370,8 @@ void extract_archive() {
     }
     if (metadata_->type == DIR_) {
       if (mkdir(metadata_->name, metadata_->perms) == -1) {
-        // fprintf(stderr, "Failed to create directory %s", metadata_->name);
-        // destruct_all(" ");
       }
-      // VLOG(DEBUG, "creating folder %s", metadata_->name);
-      // VLOG(DEBUG, "------------------------");
+      printf("Extracted directory at %s\n", metadata_->name);
     }
   }
   fclose(archive_fp);
@@ -406,7 +402,8 @@ void extract_archive() {
           extract_file(metadata_);
         } else {
           // VLOG(DEBUG,
-          //      "searching for higher version number for file %s with version "
+          //      "searching for higher version number for file %s with version
+          //      "
           //      "%d, need version %d",
           //      metadata_->name, metadata_->version, args_->occurence);
         }
@@ -450,6 +447,7 @@ void extract_file(metadata *metadata_) {
       }
     }
   }
+  printf("Extracted file at %s\n", metadata_->name);
   fclose(file);
   fclose(archive_fp);
 }
