@@ -192,7 +192,6 @@ extern void create_archive() {
   list_current = head;
 
   do {
-    print_metadata(1, &list_current->metadata_);
     VLOG(DEBUG, "------------------------");
     if (fwrite(list_current->metadata_, sizeof(metadata), 1, archive_fp) != 1) {
       destruct_all("Write Metadata to file error");
@@ -291,7 +290,6 @@ void extract_archive() {
     }
     if (metadata_->type == DIR_) {
       VLOG(DEBUG, "creating folder %s", metadata_->name);
-      print_metadata(1, &metadata_);
       VLOG(DEBUG, "------------------------");
       if (mkdir(metadata_->name, metadata_->perms) == -1) {
         fprintf(stderr, "Failed to create directory %s: %s\n", metadata_->name,
@@ -319,7 +317,6 @@ void extract_archive() {
     }
     if (metadata_->type == FILE_) {
       VLOG(DEBUG, "extracting file %s", metadata_->name);
-      print_metadata(1, &metadata_);
       VLOG(DEBUG, "------------------------");
       extract_file(metadata_);
     }
