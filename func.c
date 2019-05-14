@@ -2,6 +2,7 @@
 #include "func.h"
 #include "struct.h"
 #include <dirent.h>
+#include <errno.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -222,6 +223,9 @@ void populate_archive(int dir_flag, char *path) {
       free(metadata_);
       destruct_all("Open <file/directory list> failed");
     }
+    // ADD original DIR
+    add_file_stat(path, &metadata_);
+    add(&metadata_);
     // Iterate through directory and its files
     while ((dirp = readdir(dir)) != NULL) {
       // check not inside . and .. directories
@@ -242,10 +246,6 @@ void populate_archive(int dir_flag, char *path) {
       free(metadata_);
       destruct_all("Close dir failed");
     }
-
-    // ADD original DIR
-    add_file_stat(path, &metadata_);
-    add(&metadata_);
     break;
   case FILE_:
     add_file_stat(path, &metadata_);
@@ -283,17 +283,46 @@ void extract_archive() {
   VLOG(DEBUG, "Location set to %ld and file at %ld", location.offset,
        ftell(archive_fp));
 
+  // READ DIRS & CREATE FOLDERS
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
     metadata_ = (metadata *)buffer;
     if (metadata_ == NULL) {
+      fclose(archive_fp);
       destruct_all("Reading metadata from file to struct failed");
     }
-    print_metadata(1, &metadata_);
-    for (i = 0; i < args_->no_of_files; i++) {
-      if (strcmp(metadata_->name, args_->file_list[i].name) == 0) {
-        VLOG(DEBUG, "extracting file %s", metadata_->name);
-        extract_file(metadata_);
+    if (metadata_->type == DIR_) {
+      VLOG(DEBUG, "creating folder %s", metadata_->name);
+      print_metadata(1, &metadata_);
+      VLOG(DEBUG, "------------------------");
+      if (mkdir(metadata_->name, metadata_->perms) == -1) {
+        fprintf(stderr, "Failed to create directory %s: %s\n", metadata_->name,
+                strerror(errno));
       }
+    }
+  }
+  fclose(archive_fp);
+
+  // RESET SEEK
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("Open <adtar_file> failed");
+  }
+
+  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+    destruct_all("fseek to metadata location on extract_archive error");
+  }
+
+  // READ FILES AND CREATE THEM
+  while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+    metadata_ = (metadata *)buffer;
+    if (metadata_ == NULL) {
+      fclose(archive_fp);
+      destruct_all("Reading metadata from file to struct failed");
+    }
+    if (metadata_->type == FILE_) {
+      VLOG(DEBUG, "extracting file %s", metadata_->name);
+      print_metadata(1, &metadata_);
+      VLOG(DEBUG, "------------------------");
+      extract_file(metadata_);
     }
   }
   fclose(archive_fp);
