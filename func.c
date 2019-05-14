@@ -223,6 +223,7 @@ extern void create_archive() {
 
   do {
     VLOG(DEBUG, "------------------------");
+    print_metadata(1, &list_current->metadata_);
     if (fwrite(list_current->metadata_, sizeof(metadata), 1, archive_fp) != 1) {
       destruct_all("Write Metadata to file error");
     }
@@ -286,7 +287,6 @@ void append_archive() {
   FILE *archive_fp;
   list *list_current;
   char buffer[512];
-  metadata *metadata_;
   metadata_offset location;
   int i;
 
@@ -312,7 +312,10 @@ void append_archive() {
 
   // READ DIRS & CREATE FOLDERS
   while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
-    metadata_ = (metadata *)buffer;
+    metadata *temp;
+    metadata *metadata_ = malloc(sizeof(metadata));
+    temp = (metadata *)buffer;
+    memcpy(metadata_, temp, sizeof(metadata));
     if (metadata_ == NULL) {
       fclose(archive_fp);
       destruct_all("Reading metadata from <adtar-file> to struct failed");
@@ -366,12 +369,12 @@ void extract_archive() {
       destruct_all("Reading metadata from file to struct failed");
     }
     if (metadata_->type == DIR_) {
+      if (mkdir(metadata_->name, metadata_->perms) == -1) {
+        fprintf(stderr, "Failed to create directory %s", metadata_->name);
+        destruct_all(" ");
+      }
       VLOG(DEBUG, "creating folder %s", metadata_->name);
       VLOG(DEBUG, "------------------------");
-      if (mkdir(metadata_->name, metadata_->perms) == -1) {
-        fprintf(stderr, "Failed to create directory %s: %s\n", metadata_->name,
-                strerror(errno));
-      }
     }
   }
   fclose(archive_fp);
@@ -506,49 +509,49 @@ void add_to_archive(metadata **metadata_, char *path) {
 }
 
 void display_metadata() {
-    int i,j;
-    FILE *archive_fp;
-    char buffer[512];
-    metadata_offset location;
-    metadata *metadata_;
-    char permissions[10];
+  int i, j;
+  FILE *archive_fp;
+  char buffer[512];
+  metadata_offset location;
+  metadata *metadata_;
+  char permissions[10];
 
-    if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
-      destruct_all("print metadata failed to read <adtar-file>");
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("print metadata failed to read <adtar-file>");
+  }
+  if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
+    destruct_all("Reading offset in print metadata from <adtar_file> failed");
+    return;
+  }
+  fclose(archive_fp);
+
+  if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
+    destruct_all("print metadata failed to read <adtar_file> failed");
+  }
+
+  if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
+    destruct_all("fseek to metadata location on print metadata error");
+  }
+
+  while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
+    metadata_ = (metadata *)buffer;
+    if (metadata_ == NULL) {
+      destruct_all("Reading metadata from file to struct failed");
     }
-    if (fread(&location, sizeof(metadata_offset), 1, archive_fp) < 1) {
-      destruct_all(
-          "Reading offset in print metadata from <adtar_file> failed");
-      return;
+
+    *permissions = '\0';
+    // setting read, write, and execute permissions
+    for (i = 2; i >= 0; i--) {
+      j = (metadata_->perms >> (i * 3)) & 07;
+      strcat(permissions, modes[j]);
     }
-    fclose(archive_fp);
-
-    if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
-      destruct_all("print metadata failed to read <adtar_file> failed");
-    }
-
-    if (fseek(archive_fp, location.offset, SEEK_SET) < 0) {
-      destruct_all("fseek to metadata location on print metadata error");
-    }
-
-    while (fread(&buffer, sizeof(metadata), 1, archive_fp) == 1) {
-      metadata_ = (metadata *)buffer;
-      if (metadata_ == NULL) {
-        destruct_all("Reading metadata from file to struct failed");
-      }
-
-      *permissions = '\0';
-      // setting read, write, and execute permissions
-      for (i=2; i>=0; i--){
-          j = (metadata_->perms >> (i*3)) & 07;
-          strcat(permissions,modes[j]);
-      }
-      // print permissions
-      printf("%d %s %d %d% 6d %s %s\n", metadata_->type, permissions, metadata_->uid, metadata_->gid, metadata_->file_size, metadata_->last_modified, metadata_->name);
-    }
-    printf("\n");
-    fclose(archive_fp);
-
+    // print permissions
+    printf("%d %s %d %d% 6d %s %s\n", metadata_->type, permissions,
+           metadata_->uid, metadata_->gid, metadata_->file_size,
+           metadata_->last_modified, metadata_->name);
+  }
+  printf("\n");
+  fclose(archive_fp);
 }
 
 void print_path(char *path_name, int level, int type) {
