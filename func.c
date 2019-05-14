@@ -284,11 +284,11 @@ void extract_file(metadata *metadata_) {
   if ((archive_fp = fopen(args_->adtar_file, "rb")) == NULL) {
     destruct_all("extract file failed to read <adtar-file>");
   }
-  if ((file = fopen(metadata_->name, "ab")) == NULL) {
+  if ((file = fopen(metadata_->name, "wb")) == NULL) {
     destruct_all("extract file failed to read file");
   }
 
-  if (fseek(file, metadata_->offset, SEEK_SET) < 0) {
+  if (fseek(archive_fp, metadata_->offset, SEEK_SET) < 0) {
     destruct_all("Fseek to file offset in extract file failed");
   }
   VLOG(DEBUG, "--------------------");

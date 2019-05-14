@@ -1,10 +1,9 @@
 # Project specs
 adtar
 a.out
-test.c
-test_dir
 .DS_Store
 test.ad
+obj
 
 # Byte
 -compiled / optimized / DLL files
