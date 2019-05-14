@@ -371,7 +371,6 @@ void extract_archive() {
     if (metadata_->type == DIR_) {
       if (mkdir(metadata_->name, metadata_->perms) == -1) {
       }
-      printf("Extracted directory at %s\n", metadata_->name);
     }
   }
   fclose(archive_fp);
@@ -447,7 +446,6 @@ void extract_file(metadata *metadata_) {
       }
     }
   }
-  printf("Extracted file at %s\n", metadata_->name);
   fclose(file);
   fclose(archive_fp);
 }
